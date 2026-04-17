@@ -1,0 +1,9 @@
+bigwigs/
+ccre_signal/
+cCRE/
+matrices/
+*.bigWig
+*.bigwig
+*.tsv.gz
+*.rds
+*.pdf
