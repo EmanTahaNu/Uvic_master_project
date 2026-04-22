@@ -25,10 +25,6 @@ encode_cell_lines <- encode_meta_data %>%
 
 # ENCODE cell lines that match with CCLE
 
-meta_cell_lines <- metabolomic_ccle %>%
-  distinct(CCLE_ID) %>%
-  pull(CCLE_ID)
-
 
 #remove special characters , convert strings to upper
 clean_name <- function(x) {x %>%
@@ -98,7 +94,22 @@ write_csv(most_freq_marks, "results/most_frequant_marks.csv")
 
 #=========================================================
 
+mark_rep_table %>%
+  filter(mark %in% top_marks) %>%
+  summarise(
+    pairs_total = n(),
+    pairs_with_1_exp = sum(n_experiments == 1),
+    pairs_with_2plus = sum(n_experiments >= 2),
+    max_exp = max(n_experiments)
+  )
 
 
-
+mark_rep_table %>%
+  filter(mark %in% top_marks) %>%
+  summarise(
+    pairs_total      = n(),
+    pairs_with_1_exp = sum(n_experiments == 1),
+    pairs_with_2plus = sum(n_experiments >= 2),
+    max_exp          = max(n_experiments)
+  )
 
