@@ -5,6 +5,8 @@ print(target_cell_lines)
 
 
 #`expression matrix`
+mat_log_aligned <- readRDS(file.path(MATRICES_DIR, "expression_matrix_aligned_log2TPM.rds"))
+
 missing_exp <- setdiff(target_cell_lines, colnames(mat))
 
 for (cl in missing_exp) {
