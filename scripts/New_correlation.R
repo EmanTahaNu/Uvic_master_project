@@ -1,13 +1,5 @@
-# 07_correlation_multi_fdr.R
-# Runs the PLS cCRE x metabolite correlation once per mark (Pearson + Spearman,
-# BH-corrected), then produces every downstream summary table and plot at
-# BOTH FDR 0.05 and FDR 0.1 thresholds - filtering only, no recomputation.
 
 source("/Volumes/eman/thesis/thesis_paths.R")
-# NOTE: previously this script re-overwrote RESULTS_DIR/MATRICES_DIR with
-# local Desktop paths after sourcing thesis_paths.R - removed. All paths
-# below use the SSD variables from thesis_paths.R only.
-
 library(dplyr)
 library(readr)
 library(tidyr)
@@ -16,16 +8,13 @@ library(cowplot)
 
 top_marks <- c("H3K4me3", "H3K27ac", "H3K27me3", "H3K36me3", "H3K9me3")
 
-# all outputs from this run - both raw correlation CSVs and FDR summaries -
-# go into this new folder, never touching the original results/ files
+
 CORR_RERUN_DIR <- file.path(RESULTS_DIR, "pls_correlation_full_rerun")
 
-cat("Clearing old outputs in", CORR_RERUN_DIR, "\n")
-unlink(CORR_RERUN_DIR, recursive = TRUE)
 dir.create(CORR_RERUN_DIR, recursive = TRUE)
 
 # ================================================================
-# STEP 1: load shared inputs
+# STEP 1: load inputs
 # ================================================================
 
 ccre_bed <- read_tsv(
@@ -41,7 +30,7 @@ met <- read_csv(file.path(MATRICES_DIR, "metabolite_matrix_aligned.csv"),
   tibble::column_to_rownames("metabolite")
 
 # ================================================================
-# STEP 2: run correlation for EVERY mark, no skipping
+# STEP 2: run correlation for EVERY mark
 # ================================================================
 
 for (this_mark in top_marks) {
@@ -105,7 +94,6 @@ for (this_mark in top_marks) {
     )
   
   write_csv(results, out_file)
-  cat(this_mark, ": saved\n")
 }
 
 # ================================================================
@@ -117,14 +105,11 @@ generate_fdr_outputs <- function(fdr_threshold) {
   suffix  <- ifelse(fdr_threshold == 0.05, "fdr05", "fdr10")
   out_dir <- file.path(CORR_RERUN_DIR, paste0("correlation_", suffix))
   
-  cat("\n==== Generating outputs for FDR <", fdr_threshold, "====\n")
-  cat("Clearing old outputs in", out_dir, "\n")
-  unlink(out_dir, recursive = TRUE)
   dir.create(out_dir, recursive = TRUE)
   
   all_mark_results <- list()
   
-  # -- per-mark significant counts, density plots --
+  #  per-mark significant counts, density plots 
   for (this_mark in top_marks) {
     
     results <- read_csv(file.path(CORR_RERUN_DIR, paste0("PLS_correlation_", this_mark, ".csv")),
@@ -175,69 +160,10 @@ generate_fdr_outputs <- function(fdr_threshold) {
     }
   }
   
-  # -- per-mark significant summary table --
-  summary_table <- data.frame()
-  for (this_mark in top_marks) {
-    results <- all_mark_results[[this_mark]]
-    sig <- results %>% dplyr::filter(spearman_fdr < fdr_threshold) %>% dplyr::arrange(desc(abs(spearman_r)))
-    top_met <- sig %>% dplyr::count(metabolite) %>% dplyr::arrange(desc(n)) %>%
-      dplyr::pull(metabolite) %>% head(20) %>% paste(collapse = ", ")
-    summary_table <- dplyr::bind_rows(summary_table, data.frame(
-      mark = this_mark,
-      total_pairs = nrow(results),
-      sig_pearson  = sum(results$pearson_fdr  < fdr_threshold, na.rm = TRUE),
-      sig_spearman = sum(results$spearman_fdr < fdr_threshold, na.rm = TRUE),
-      unique_sig_cCREs = dplyr::n_distinct(sig$cCRE_id),
-      unique_sig_metabolites = dplyr::n_distinct(sig$metabolite),
-      top_metabolites = top_met
-    ))
-  }
-  write_csv(summary_table, file.path(out_dir, "PLS_significant_summary.csv"))
-  cat("\nSummary table (FDR <", fdr_threshold, "):\n")
-  print(summary_table[, 1:6])
+ 
   
-  # -- direction breakdown (positive/negative) per metabolite, per mark --
-  all_metabolite_summary <- data.frame()
-  for (this_mark in top_marks) {
-    results <- all_mark_results[[this_mark]]
-    sig <- results %>% dplyr::filter(spearman_fdr < fdr_threshold)
-    if (nrow(sig) == 0) next
-    
-    pos <- sig %>% dplyr::filter(spearman_r > 0) %>% dplyr::group_by(metabolite) %>%
-      dplyr::summarise(n_cCREs = dplyr::n(), mean_r = round(mean(spearman_r, na.rm = TRUE), 3),
-                       max_r = round(max(spearman_r, na.rm = TRUE), 3),
-                       direction = "Positive", mark = this_mark, .groups = "drop") %>%
-      dplyr::arrange(desc(n_cCREs))
-    
-    neg <- sig %>% dplyr::filter(spearman_r < 0) %>% dplyr::group_by(metabolite) %>%
-      dplyr::summarise(n_cCREs = dplyr::n(), mean_r = round(mean(spearman_r, na.rm = TRUE), 3),
-                       max_r = round(min(spearman_r, na.rm = TRUE), 3),
-                       direction = "Negative", mark = this_mark, .groups = "drop") %>%
-      dplyr::arrange(desc(n_cCREs))
-    
-    all_metabolite_summary <- dplyr::bind_rows(all_metabolite_summary, pos, neg)
-    
-    # direction bar plot
-    top_pos <- pos %>% head(10)
-    top_neg <- neg %>% head(10)
-    plot_data <- dplyr::bind_rows(top_pos, top_neg) %>%
-      dplyr::mutate(n_signed = ifelse(direction == "Positive", n_cCREs, -n_cCREs),
-                    metabolite = reorder(metabolite, n_signed))
-    if (nrow(plot_data) > 0) {
-      ggplot(plot_data, aes(x = metabolite, y = n_signed, fill = direction)) +
-        geom_bar(stat = "identity") +
-        scale_fill_manual(values = c("Positive" = "steelblue", "Negative" = "tomato")) +
-        coord_flip() + geom_hline(yintercept = 0, color = "black") +
-        labs(title = paste("Top metabolites by direction —", this_mark, "at PLS"),
-             subtitle = paste("FDR <", fdr_threshold), x = "Metabolite",
-             y = "Number of significant cCREs", fill = "Direction") +
-        theme_classic() + theme(legend.position = "top")
-      ggsave(file.path(out_dir, paste0("metabolite_direction_", this_mark, ".png")), width = 8, height = 6, dpi = 300)
-    }
-  }
-  write_csv(all_metabolite_summary, file.path(out_dir, "metabolite_direction_all_marks.csv"))
-  
-  # -- top 20 metabolite distribution plots (significant cCREs only) per mark --
+ 
+  # top 20 metabolite distribution plots (significant cCREs only) per mark 
   for (this_mark in top_marks) {
     results <- all_mark_results[[this_mark]]
     
@@ -280,7 +206,7 @@ generate_fdr_outputs <- function(fdr_threshold) {
     }
   }
   
-  # -- combined publication density figure --
+  # combined density figure 
   make_plot <- function(df, title) {
     df %>%
       dplyr::filter(!is.na(pearson_r), !is.na(spearman_r)) %>%
@@ -335,7 +261,7 @@ generate_fdr_outputs <- function(fdr_threshold) {
         " unique metabolites:", dplyr::n_distinct(sig$metabolite), "\n")
   }
   
-  # -- significant cCREs per mark bar plot --
+  #  significant cCREs per mark bar plot 
   mark_counts <- data.frame(
     mark = top_marks,
     n_ccres = sapply(top_marks, function(m) {
@@ -361,7 +287,6 @@ generate_fdr_outputs <- function(fdr_threshold) {
   
   ggsave(file.path(out_dir, "cCRE_per_mark_barplot.png"), width = 7, height = 5, dpi = 300, bg = "white")
   
-  cat("All outputs for FDR <", fdr_threshold, "written to", out_dir, "\n")
 }
 
 # ================================================================
@@ -371,4 +296,3 @@ generate_fdr_outputs <- function(fdr_threshold) {
 generate_fdr_outputs(0.05)
 generate_fdr_outputs(0.1)
 
-cat("\nAll done - both FDR 0.05 and FDR 0.1 outputs generated.\n")
