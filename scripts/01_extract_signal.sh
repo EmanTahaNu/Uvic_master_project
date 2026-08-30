@@ -13,7 +13,6 @@ mkdir -p "$OUT_DIR"
 # Create 4-column BED
 awk '{print $1"\t"$2"\t"$3"\t"NR}' "$CCRE_BED" > "$CCRE_BED4"
 
-echo "Extracting signal..."
 
 # Run for every bigWig file
 for bw in "$BIGWIG_DIR"/*.bigWig; do
@@ -31,14 +30,3 @@ for bw in "$BIGWIG_DIR"/*.bigWig; do
     fi
 done
 
-echo "All done!"
-
-This simplified version:
-
-Checks that the SSD and BED file exist.
-Creates the output directory.
-Converts the cCRE BED to a 4-column BED with numeric IDs.
-Loops through all .bigWig files.
-Runs bigWigAverageOverBed for each file.
-Prints whether each sample finished successfully.
-Omits logging, file-size checks, counters, and cleanup to keep the script straightforward.
