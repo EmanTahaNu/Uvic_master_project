@@ -190,4 +190,3 @@ saveRDS(mat_log, file.path(MATRICES_DIR, "expression_matrix2_log2TPM.rds"))
 write_tsv(mat,     file.path(MATRICES_DIR, "expression_matrix2_TPM.tsv"))
 write_tsv(mat_log, file.path(MATRICES_DIR, "expression_matrix2_log2TPM.tsv"))
 
-cat("done\n")
