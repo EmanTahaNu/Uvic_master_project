@@ -1,13 +1,8 @@
 # ================================================================
-# GO + KEGG enrichment on V29 gene assignment — both FDR thresholds
-# Foreground: genes at significant cCREs, per mark (Spearman)
+# GO + KEGG enrichment on V29 gene assignment , both FDR thresholds
 # Background: all PLS cCREs assigned to a protein-coding gene (V29)
 # ================================================================
 
-suppressMessages({
-  library(dplyr); library(readr)
-  library(clusterProfiler); library(org.Hs.eg.db); library(ggplot2)
-})
 
 BASE   <- "/Volumes/eman/thesis/results"
 ASSIGN <- file.path(BASE, "gene_assignment_v29", "PLS_gene_assignment_v29_pc.txt")
@@ -22,7 +17,6 @@ runs <- list(
   fdr10 = list(dir = file.path(BASE, "FDR_0.1", "significant"),   cut = 0.10)
 )
 
-# ---- V29 gene assignment + background universe (built once) ----
 assign <- read_tsv(ASSIGN, show_col_types = FALSE)
 universe_symbols <- unique(assign$gene_name)
 universe_entrez  <- unique(bitr(universe_symbols, "SYMBOL", "ENTREZID", org.Hs.eg.db)$ENTREZID)
@@ -31,9 +25,7 @@ cat("Background universe genes (Entrez):", length(universe_entrez), "\n\n")
 for (lbl in names(runs)) {
   SIG_DIR <- runs[[lbl]]$dir
   FDR_CUT <- runs[[lbl]]$cut
-  cat("=========================================\n")
-  cat("RUN:", lbl, " (Spearman FDR <", FDR_CUT, ")\n")
-  cat("=========================================\n")
+  
   
   for (mk in marks) {
     f <- file.path(SIG_DIR, paste0("PLS_correlation_", mk, "_significant.csv"))
@@ -79,4 +71,3 @@ for (lbl in names(runs)) {
     cat("\n")
   }
 }
-cat("Done. Results in:", OUT, "\n")
