@@ -14,8 +14,8 @@ CORR_RERUN_DIR <- file.path(RESULTS_DIR, "pls_correlation_full_rerun")
 dir.create(CORR_RERUN_DIR, recursive = TRUE)
 
 # ================================================================
-# STEP 1: load inputs
-# ================================================================
+#load inputs
+
 
 ccre_bed <- read_tsv(
   file.path(CCRE_DIR, "GRCh38-cCREs.bed"),
@@ -30,8 +30,7 @@ met <- read_csv(file.path(MATRICES_DIR, "metabolite_matrix_aligned.csv"),
   tibble::column_to_rownames("metabolite")
 
 # ================================================================
-# STEP 2: run correlation for EVERY mark
-# ================================================================
+#run correlation for every mark
 
 for (this_mark in top_marks) {
   
@@ -97,12 +96,12 @@ for (this_mark in top_marks) {
 }
 
 # ================================================================
-# STEP 3: threshold-dependent outputs, run once per FDR level
+#threshold outputs, run once per FDR level
 # ================================================================
 
 generate_fdr_outputs <- function(fdr_threshold) {
   
-  suffix  <- ifelse(fdr_threshold == 0.05, "fdr05", "fdr10")
+  suffix  <- ifelse(fdr_threshold == 0.05, "fdr05", "fdr0.1")
   out_dir <- file.path(CORR_RERUN_DIR, paste0("correlation_", suffix))
   
   dir.create(out_dir, recursive = TRUE)
@@ -163,49 +162,7 @@ generate_fdr_outputs <- function(fdr_threshold) {
  
   
  
-  # top 20 metabolite distribution plots (significant cCREs only) per mark 
-  for (this_mark in top_marks) {
-    results <- all_mark_results[[this_mark]]
-    
-    top20_metabolites <- results %>%
-      dplyr::filter(spearman_fdr < fdr_threshold | pearson_fdr < fdr_threshold) %>%
-      dplyr::count(metabolite) %>% dplyr::arrange(desc(n)) %>% head(20) %>% dplyr::pull(metabolite)
-    
-    if (length(top20_metabolites) == 0) next
-    
-    for (met_name in top20_metabolites) {
-      met_sig <- results %>%
-        dplyr::filter(metabolite == met_name, spearman_fdr < fdr_threshold) %>%
-        dplyr::filter(!is.na(pearson_r), !is.na(spearman_r))
-      
-      if (nrow(met_sig) < 5) next
-      
-      plot_data <- met_sig %>%
-        tidyr::pivot_longer(cols = c(pearson_r, spearman_r), names_to = "method", values_to = "r") %>%
-        dplyr::mutate(method = ifelse(method == "pearson_r", "Pearson", "Spearman"))
-      
-      pearson_mean  <- round(mean(met_sig$pearson_r, na.rm = TRUE), 3)
-      spearman_mean <- round(mean(met_sig$spearman_r, na.rm = TRUE), 3)
-      
-      ggplot(plot_data, aes(x = r, fill = method, color = method)) +
-        geom_density(alpha = 0.4) +
-        geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
-        annotate("text", x = -0.9, y = Inf, label = paste("Pearson mean:", pearson_mean),
-                 hjust = 0, vjust = 2, size = 3.5, color = "steelblue") +
-        annotate("text", x = -0.9, y = Inf, label = paste("Spearman mean:", spearman_mean),
-                 hjust = 0, vjust = 4, size = 3.5, color = "tomato") +
-        scale_fill_manual(values  = c("Pearson" = "steelblue", "Spearman" = "tomato")) +
-        scale_color_manual(values = c("Pearson" = "steelblue", "Spearman" = "tomato")) +
-        labs(title = paste(met_name, "—", this_mark, "at PLS"),
-             subtitle = paste("n =", nrow(met_sig), "significant cCREs | FDR <", fdr_threshold),
-             x = "Correlation coefficient (r)", y = "Density") +
-        theme_classic() + theme(legend.position = "top")
-      
-      clean_met <- gsub("[^a-zA-Z0-9]", "_", met_name)
-      ggsave(file.path(out_dir, paste0("top20_", this_mark, "_", clean_met, ".png")), width = 6, height = 4, dpi = 300)
-    }
-  }
-  
+ 
   # combined density figure 
   make_plot <- function(df, title) {
     df %>%
@@ -252,7 +209,7 @@ generate_fdr_outputs <- function(fdr_threshold) {
   ggsave(file.path(out_dir, "combined_density_publication.png"), final, width = 14, height = 7, dpi = 300, bg = "white")
   ggsave(file.path(out_dir, "combined_density_publication.pdf"), final, width = 14, height = 7, bg = "white")
   
-  # -- unique significant pairs / cCREs / metabolites per mark --
+  # unique significant pairs / cCREs / metabolites per mark
   for (this_mark in top_marks) {
     results <- all_mark_results[[this_mark]]
     sig <- results %>% dplyr::filter(spearman_fdr < fdr_threshold | pearson_fdr < fdr_threshold)
@@ -290,8 +247,7 @@ generate_fdr_outputs <- function(fdr_threshold) {
 }
 
 # ================================================================
-# STEP 4: run for both thresholds
-# ================================================================
+# run for both thresholds
 
 generate_fdr_outputs(0.05)
 generate_fdr_outputs(0.1)
