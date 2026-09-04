@@ -19,7 +19,6 @@ for bw in "$BIGWIG_DIR"/*.bigWig; do
     sample=$(basename "$bw" .bigWig)
     output="$OUT_DIR/${sample}_signal.tab"
 
-    echo "Processing $sample..."
 
     "$TOOL" "$bw" "$CCRE_BED4" "$output"
 
