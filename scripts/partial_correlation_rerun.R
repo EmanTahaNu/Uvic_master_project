@@ -202,7 +202,6 @@ generate_partial_fdr_outputs <- function(fdr_threshold) {
   sig_dir <- file.path(OUT_DIR, suffix)
   dir.create(sig_dir, recursive = TRUE, showWarnings = FALSE)
   
-  cat("\n==== Partial correlation FDR < ", fdr_threshold, " ====\n", sep = "")
   
   for (this_mark in top_marks) {
     
@@ -234,7 +233,7 @@ generate_partial_fdr_outputs <- function(fdr_threshold) {
 }
 
 generate_partial_fdr_outputs(0.05)
-generate_partial_fdr_outputs(0.10)
+generate_partial_fdr_outputs(0.1)
 
 #  summary table
 
