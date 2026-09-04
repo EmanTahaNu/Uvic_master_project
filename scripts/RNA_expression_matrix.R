@@ -6,16 +6,14 @@ library(httr)
 library(jsonlite)
 library(purrr)
 
-# folders
-BASE_DIR     <- "/Users/emantaha/Desktop/thesis"
+
 RNA_DIR      <- file.path(BASE_DIR, "rna_quant")
 MATRICES_DIR <- file.path(BASE_DIR, "matrices")
 dir.create(RNA_DIR, showWarnings = FALSE, recursive = TRUE)
 dir.create(MATRICES_DIR, showWarnings = FALSE, recursive = TRUE)
 
-#=====================================================
-# load ENCODE report
-#=====================================================
+#load ENCODE report
+
 
 encode_RNA_data <- read.delim(file.path(BASE_DIR, "last_RNA_encode_data.tsv"),
                               skip = 1, header = TRUE, sep = "\t",
@@ -23,7 +21,6 @@ encode_RNA_data <- read.delim(file.path(BASE_DIR, "last_RNA_encode_data.tsv"),
 
 #=====================================================
 # filter: total RNA-seq, Barbara + Thomas lab only
-#=====================================================
 
 rna_sheet <- encode_RNA_data %>%
   filter(Assay.title == "total RNA-seq",
@@ -36,7 +33,6 @@ write.csv(rna_sheet, file.path(BASE_DIR, "results/RNA_sheet.csv"), row.names = F
 
 #=====================================================
 # keep only my 27 cell lines
-#=====================================================
 
 matched_names <- matched_cell_lines$encode_name
 
@@ -49,8 +45,7 @@ print(setdiff(matched_names, unique(rna_sheet$Biosample.term.name)))
 write.csv(rna_sheet, file.path(BASE_DIR, "results/RNA_sheet_filtered.csv"), row.names = FALSE)
 
 #=====================================================
-# expand Files column: one row per file accession
-#=====================================================
+#expand Files column: one row per file accession
 
 rna_files <- rna_sheet %>%
   mutate(file_id = strsplit(as.character(Files), ",")) %>%
@@ -59,8 +54,6 @@ rna_files <- rna_sheet %>%
          file_accession = str_extract(file_id, "ENCFF[A-Z0-9]+")) %>%
   filter(!is.na(file_accession))
 
-#=====================================================
-# ask ENCODE for real download link + file type
 #=====================================================
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -95,7 +88,6 @@ cat("files to download:", nrow(rna_files), "\n")
 
 #=====================================================
 # download
-#=====================================================
 
 for (i in seq_len(nrow(rna_files))) {
   url <- rna_files$file_url[i]
@@ -113,7 +105,6 @@ for (i in seq_len(nrow(rna_files))) {
 
 #=====================================================
 # read files, check gene_id + TPM exist
-#=====================================================
 
 exp_list <- list()
 
@@ -139,18 +130,15 @@ for (i in seq_len(nrow(rna_files))) {
 }
 
 all_exp <- bind_rows(exp_list)
-cat("cell lines loaded:\n")
 print(unique(all_exp$cell_line))
 
 #=====================================================
 # strip gene version so same gene matches across cell lines
-#=====================================================
 
 all_exp$gene_id <- str_remove(all_exp$gene_id, "\\..*")
 
 #=====================================================
-# collapse replicates using median
-#=====================================================
+#collapse replicates using median
 
 collapsed <- all_exp %>%
   group_by(gene_id, cell_line) %>%
@@ -158,7 +146,6 @@ collapsed <- all_exp %>%
 
 #=====================================================
 # build matrix, keep ENSG genes only
-#=====================================================
 
 mat <- collapsed %>%
   pivot_wider(names_from = cell_line, values_from = TPM) %>%
@@ -168,22 +155,19 @@ cell_cols <- setdiff(colnames(mat), "gene_id")
 cat("NA count:", sum(is.na(mat[, cell_cols])), "\n")
 
 #=====================================================
-# log2(TPM+1) version
-#=====================================================
+#log2(TPM+1) version
 
 mat_log <- mat
 mat_log[, cell_cols] <- log2(as.matrix(mat_log[, cell_cols]) + 1)
 
 #=====================================================
 # round both
-#=====================================================
 
 mat[, cell_cols]     <- round(mat[, cell_cols], 4)
 mat_log[, cell_cols] <- round(mat_log[, cell_cols], 4)
 
 #=====================================================
 # save
-#=====================================================
 
 saveRDS(mat,     file.path(MATRICES_DIR, "expression_matrix2_TPM.rds"))
 saveRDS(mat_log, file.path(MATRICES_DIR, "expression_matrix2_log2TPM.rds"))
