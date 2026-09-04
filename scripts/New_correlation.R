@@ -16,7 +16,6 @@ dir.create(CORR_RERUN_DIR, recursive = TRUE)
 # ================================================================
 #load inputs
 
-
 ccre_bed <- read_tsv(
   file.path(CCRE_DIR, "GRCh38-cCREs.bed"),
   col_names = c("chr", "start", "end", "cCRE_id", "score", "category"),
@@ -97,7 +96,6 @@ for (this_mark in top_marks) {
 
 # ================================================================
 #threshold outputs, run once per FDR level
-# ================================================================
 
 generate_fdr_outputs <- function(fdr_threshold) {
   
@@ -108,7 +106,7 @@ generate_fdr_outputs <- function(fdr_threshold) {
   
   all_mark_results <- list()
   
-  #  per-mark significant counts, density plots 
+  # per-mark significant counts, density plots 
   for (this_mark in top_marks) {
     
     results <- read_csv(file.path(CORR_RERUN_DIR, paste0("PLS_correlation_", this_mark, ".csv")),
