@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 BASE="/Volumes/eman/thesis"
 SIG_DIR="$BASE/results/FDR_0.1/significant"
 OUT_DIR="$BASE/results"
