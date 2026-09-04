@@ -1,7 +1,6 @@
 # ================================================================
 # GO + KEGG enrichment on V29 gene assignment , both FDR thresholds
 # Background: all PLS cCREs assigned to a protein-coding gene (V29)
-# ================================================================
 
 
 BASE   <- "/Volumes/eman/thesis/results"
@@ -14,7 +13,7 @@ marks <- c("H3K4me3","H3K27ac","H3K27me3","H3K36me3","H3K9me3")
 # two runs: label -> (input dir, threshold)
 runs <- list(
   fdr05 = list(dir = file.path(BASE, "significant_correlation"), cut = 0.05),
-  fdr10 = list(dir = file.path(BASE, "FDR_0.1", "significant"),   cut = 0.10)
+  fdr0.1 = list(dir = file.path(BASE, "FDR_0.1", "significant"),   cut = 0.1)
 )
 
 assign <- read_tsv(ASSIGN, show_col_types = FALSE)
