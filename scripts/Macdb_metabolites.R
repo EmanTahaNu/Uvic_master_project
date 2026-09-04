@@ -59,7 +59,7 @@ hits <- mac %>%
   filter(original_metabolite_name %in% key$macdb_name) %>%
   left_join(key, by=c("original_metabolite_name"="macdb_name"))
 
-#  summary 
+# summary 
 summary_5 <- hits %>%
   mutate(p = suppressWarnings(as.numeric(`case_control_p-value`))) %>%
   group_by(my_metabolite) %>%
