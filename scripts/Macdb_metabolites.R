@@ -106,89 +106,44 @@ p <- ggplot(all_24, aes(x = reorder(metabolite, n_sig_p05),
 ggsave(file.path(OUT_DIR, "macdb_5mark_check.png"), p, width=9, height=8, dpi=150)
 cat("\nSaved: macdb_5mark_check.png\n")
 
-print(summary_5 %>%
-        filter(my_metabolite %in% c("2-hydroxyglutarate","alpha-ketoglutarate",
-                                      "citrate","isocitrate","oxalate",
-                                      "phosphocreatine","pyroglutamic acid",
-                                      "5-adenosylhomocysteine","thiamine")))
 
 
 
 
-match_4 <- tibble(your_metabolite = mets_4) %>%
-  mutate(macdb_name = mac_names[match(norm(your_metabolite), mac_norm)],
-         matched    = !is.na(macdb_name))
+metabolites_4mark_excl_k27me3 <- c(
+  "tyrosine", "creatine", "leucine", "betaine", "kynurenine",
+  "phenylalanine", "dimethylglycine", "urate", "kynurenic acid",
+  "malonylcarnitine", "butyrobetaine",
+  "C52:5 TAG", "C38:6 PC", "C48:3 TAG", "C50:3 TAG", "C46:2 TAG",
+  "C36:4 PC-B", "C56:4 TAG", "C20:4 CE", "C54:6 TAG", "C56:6 TAG",
+  "C58:6 TAG", "C56:5 TAG", "C58:7 TAG"
+)
 
-cat("\n====== MACdb match — 4-mark metabolites ======\n")
-cat("Matched:", sum(match_4$matched), "of", nrow(match_4), "\n")
-cat("\nNot matched:\n")
-print(match_4 %>% filter(!matched) %>% pull(your_metabolite))
+sub_24 <- all_4 %>% filter(metabolite %in% metabolites_4mark_excl_k27me3)
 
-# pull records 
-key4  <- match_4 %>% filter(matched) %>% dplyr::select(macdb_name, your_metabolite)
-hits4 <- mac %>%
-  filter(original_metabolite_name %in% key4$macdb_name) %>%
-  left_join(key4, by=c("original_metabolite_name"="macdb_name"))
+cat("matched:", nrow(sub_24), "of", length(metabolites_4mark_excl_k27me3), "\n")
+missing <- setdiff(metabolites_4mark_excl_k27me3, sub_24$metabolite)
+if (length(missing) > 0) { cat("missing from all_4:\n"); print(missing) }
 
-# summary 
-summary_4 <- hits4 %>%
-  mutate(p = suppressWarnings(as.numeric(`case_control_p-value`))) %>%
-  group_by(your_metabolite) %>%
-  summarise(
-    n_records  = n(),
-    n_cohorts  = n_distinct(Cohort_id),
-    n_sig_p05  = sum(p < 0.05, na.rm=TRUE),
-    prop_sig   = round(n_sig_p05 / n_records, 2),
-    .groups    = "drop"
-  ) %>%
-  arrange(desc(n_sig_p05))
-
-print(summary_4, n=50)
-
-write_csv(summary_4, file.path(OUT_DIR, "macdb_4mark_metabolites.csv"))
-
-#plot 
-all_4 <- tibble(metabolite = mets_4) %>%
-  left_join(summary_4, by=c("metabolite"="your_metabolite")) %>%
-  mutate(n_sig_p05 = ifelse(is.na(n_sig_p05), 0, n_sig_p05),
-         n_records  = ifelse(is.na(n_records),  0, n_records),
-         in_macdb   = n_records > 0)
-
-p_mac4 <- ggplot(all_4, aes(x = reorder(metabolite, n_sig_p05),
-                            y = n_sig_p05,
-                            fill = in_macdb)) +
+p_24 <- ggplot(sub_24, aes(x = reorder(metabolite, n_sig_p05),
+                           y = n_sig_p05,
+                           fill = in_macdb)) +
   geom_col() +
   geom_text(aes(label = ifelse(n_sig_p05 > 0,
                                as.character(n_sig_p05),
                                "not in MACdb")),
             hjust = -0.1, size = 3.1) +
   coord_flip() +
-  scale_fill_manual(values = c("TRUE"  = "#bd0026",
-                               "FALSE" = "#d3d3d3"),
-                    labels = c("TRUE"  = "In MACdb",
-                               "FALSE" = "Not found"),
-                    name   = NULL) +
-  labs(title    = "Cancer evidence for 4-mark shared metabolites (MACdb)",
+  scale_fill_manual(values = c("TRUE" = "#bd0026", "FALSE" = "#d3d3d3"),
+                    labels = c("TRUE" = "In MACdb", "FALSE" = "Not found"),
+                    name = NULL) +
+  labs(title = "Cancer evidence for the 24 pan-mark metabolites (4 marks, excl. H3K27me3)",
        subtitle = "Number of studies with significant case/control difference (p<0.05)",
        x = NULL, y = "Significant cancer studies") +
   theme_minimal(base_size = 12) +
-  theme(plot.title     = element_text(face="bold"),
+  theme(plot.title = element_text(face = "bold"),
         legend.position = "bottom")
 
-ggsave(file.path(OUT_DIR, "macdb_4mark_check.png"),
-       p_mac4, width=9, height=8, dpi=150)
+ggsave(file.path(OUT_DIR, "macdb_4mark_excl_k27me3.png"), p_24, width = 9, height = 8, dpi = 150)
 
-sum5 <- read_csv(file.path(OUT_DIR, "macdb_5mark_metabolites.csv"),
-                 show_col_types=FALSE) %>%
-  mutate(group = "5 marks (pan-mark)")
 
-sum4 <- summary_4 %>% mutate(group = "4 marks")
-
-combined <- bind_rows(sum5, sum4) %>%
-  filter(n_sig_p05 > 0) %>%
-  arrange(desc(n_sig_p05))
-
-print(combined %>% dplyr::select(your_metabolite, group, n_records,
-                                 n_cohorts, n_sig_p05, prop_sig), n=50)
-
-write_csv(combined, file.path(OUT_DIR, "macdb_combined_4_5mark.csv"))
